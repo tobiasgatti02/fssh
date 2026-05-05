@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { normalizeUserCode, RESERVATION_CODE_REGEX } from "@/lib/validation";
+import { getSessionUserFromRequest, recordUserAction, withRateLimit } from "@/lib/auth";
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
+  const sessionUser = await getSessionUserFromRequest(request);
+  if (!sessionUser) {
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 
-  const userCode = normalizeUserCode(String(body.user_code ?? ""));
-  if (!RESERVATION_CODE_REGEX.test(userCode)) {
-    return NextResponse.json({ error: "INVALID_CODE" }, { status: 400 });
+  const rate = await withRateLimit(sessionUser.id, "cancel", 6, 60_000);
+  if (!rate.allowed) {
+    return NextResponse.json({ error: "RATE_LIMITED" }, { status: 429 });
   }
 
   const reservation = await prisma.reservation.findUnique({ where: { id } });
@@ -22,10 +22,11 @@ export async function DELETE(
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
-  if (reservation.user_code !== userCode) {
+  if (reservation.user_id !== sessionUser.id) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
   await prisma.reservation.delete({ where: { id } });
+  await recordUserAction(sessionUser.id, "cancel");
   return NextResponse.json({ ok: true });
 }
