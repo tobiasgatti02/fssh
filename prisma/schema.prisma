@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Machine {
+  washer1
+  washer2
+  dryer
+}
+
+model Reservation {
+  id         String   @id @default(uuid())
+  machine    Machine
+  day        Int
+  hour       Int
+  user_code  String
+  user_id    String
+  week_id    String
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([machine, day, hour, week_id])
+  @@index([user_code, week_id])
+  @@index([user_id, week_id])
+}
+
+model User {
+  id            String        @id @default(uuid())
+  matriculation String        @unique
+  username      String
+  wing          String
+  floor         Int
+  door          Int
+  user_code     String        @unique
+  created_at    DateTime      @default(now())
+  reservations  Reservation[]
+  sessions      Session[]
+  actions       UserAction[]
+
+  @@index([wing, floor, door])
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  user_id    String
+  created_at DateTime @default(now())
+  expires_at DateTime
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+}
+
+model UserAction {
+  id         String   @id @default(uuid())
+  user_id    String
+  action     String
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
+}
