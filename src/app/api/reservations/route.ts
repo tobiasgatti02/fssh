@@ -13,12 +13,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    console.log("[API] /api/reservations GET week=", weekId);
     const reservations = await prisma.reservation.findMany({
       where: { week_id: weekId },
       orderBy: [{ day: "asc" }, { hour: "asc" }],
     });
+    console.log("[API] /api/reservations return count=", reservations.length);
     return NextResponse.json({ reservations });
-  } catch {
+  } catch (e) {
+    console.error("[API] /api/reservations GET error", (e as any)?.code, (e as any)?.message);
     // Fail-safe: never break the UI if DB read fails
     return NextResponse.json({ reservations: [] });
   }
@@ -104,6 +107,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ reservation: result.reservation }, { status: 201 });
   } catch (error) {
+    console.error("[API] /api/reservations POST error", (error as any)?.code, (error as any)?.message);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: "SLOT_UNAVAILABLE" }, { status: 409 });
     }
