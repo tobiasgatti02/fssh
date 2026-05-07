@@ -1,4 +1,4 @@
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 function maskDbUrl(raw?: string) {
   if (!raw) return { present: false };

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { WEEK_ID_REGEX } from "@/lib/validation";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@prisma/client";
 import { getSessionUserFromRequest, recordUserAction, withRateLimit } from "@/lib/auth";
 
 // Machines are dynamic now; validate against DB
