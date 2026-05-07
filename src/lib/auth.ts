@@ -53,6 +53,9 @@ export async function createSessionResponse<T>(userId: string, payload: T) {
   const token = crypto.randomUUID();
   const expiresAt = getSessionExpiry();
 
+  // Enforce single active session per user: remove previous sessions
+  await prisma.session.deleteMany({ where: { user_id: userId } });
+
   await prisma.session.create({
     data: {
       token,
@@ -84,6 +87,20 @@ export function clearSessionResponse() {
   });
 
   return response;
+}
+
+export function isAdminAuthorized(request: NextRequest): boolean {
+  const header = request.headers.get("authorization");
+  if (!header || !header.startsWith("Basic ")) return false;
+  try {
+    const decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
+    const [username, password] = decoded.split(":");
+    const expectedUser = process.env.ADMIN_USER || "fssh";
+    const expectedPass = process.env.ADMIN_PASS || ">y26}Zvzo8eJ";
+    return username === expectedUser && password === expectedPass;
+  } catch {
+    return false;
+  }
 }
 
 export async function withRateLimit(

@@ -1,8 +1,13 @@
-export type Machine = "washer1" | "washer2" | "dryer";
+export type Machine = {
+  id: string;
+  name: string;
+  label: string;
+  enabled: boolean;
+};
 
 export type Reservation = {
   id: string;
-  machine: Machine;
+  machine_id: string;
   day: number;
   hour: number;
   user_code: string;

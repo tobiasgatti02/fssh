@@ -3,22 +3,22 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { DAY_KEYS, hourLabel } from "@/lib/time";
-import { Machine, Reservation } from "@/lib/types";
+import { Reservation } from "@/lib/types";
 
 const DAY_COLUMN_WIDTH = 140;
 
 type ReservationGridProps = {
-  machine: Machine;
+  machineId: string;
   reservations: Reservation[];
-  userCode: string;
+  userId: string;
   onSlotClick: (day: number, hour: number, reservation?: Reservation) => void;
   autoScrollDayIndex: number;
 };
 
 export default function ReservationGrid({
-  machine,
+  machineId,
   reservations,
-  userCode,
+  userId,
   onSlotClick,
   autoScrollDayIndex,
 }: ReservationGridProps) {
@@ -28,12 +28,12 @@ export default function ReservationGrid({
   const reservationMap = useMemo(() => {
     const map = new Map<string, Reservation>();
     reservations
-      .filter((reservation) => reservation.machine === machine)
+      .filter((reservation) => reservation.machine_id === machineId)
       .forEach((reservation) => {
         map.set(`${reservation.day}-${reservation.hour}`, reservation);
       });
     return map;
-  }, [reservations, machine]);
+  }, [reservations, machineId]);
 
   useEffect(() => {
     const target = dayRefs.current[autoScrollDayIndex];
@@ -83,7 +83,7 @@ export default function ReservationGrid({
             </div>
             {dayLabels.map((_, day) => {
               const reservation = reservationMap.get(`${day}-${hour}`);
-              const owned = reservation && reservation.user_code === userCode;
+              const owned = reservation && reservation.user_id === userId;
               const statusLabel = reservation
                 ? owned
                   ? t("owned_by_you")
@@ -99,7 +99,7 @@ export default function ReservationGrid({
                     reservation
                       ? owned
                         ? "bg-emerald-100/70 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-100"
-                        : "bg-slate-100/70 text-slate-700 dark:bg-slate-800/80 dark:text-slate-200"
+                        : "bg-rose-50/70 text-rose-700 dark:bg-rose-500/10 dark:text-rose-200"
                       : "bg-white/70 text-slate-600 dark:bg-slate-900/70 dark:text-slate-300"
                   }`}
                 >

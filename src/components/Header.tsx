@@ -2,18 +2,18 @@
 
 import { useLanguage } from "@/components/LanguageProvider";
 import { useTheme } from "@/components/ThemeProvider";
-import { RESERVATION_CODE_REGEX } from "@/lib/validation";
+import type { UserProfile } from "@/lib/types";
 
 type HeaderProps = {
   weekId: string;
-  userCode: string;
-  onUserCodeChange: (value: string) => void;
+  user: UserProfile | null;
+  onLoginClick: () => void;
+  onLogout: () => void;
 };
 
-export default function Header({ weekId, userCode, onUserCodeChange }: HeaderProps) {
+export default function Header({ weekId, user, onLoginClick, onLogout }: HeaderProps) {
   const { lang, setLang, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  const isValid = RESERVATION_CODE_REGEX.test(userCode);
 
   return (
     <header className="flex flex-col gap-6 rounded-3xl border border-white/30 bg-white/80 px-6 py-6 shadow-xl shadow-slate-200/50 backdrop-blur dark:border-white/10 dark:bg-slate-900/70 dark:shadow-slate-950/40">
@@ -66,21 +66,34 @@ export default function Header({ weekId, userCode, onUserCodeChange }: HeaderPro
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-            {t("my_code")}
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("code_hint")}</p>
+          {user ? (
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {t("hi" as any)}, <span className="font-semibold">{user.username}</span>
+            </p>
+          ) : null}
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <input
-            value={userCode}
-            onChange={(event) => onUserCodeChange(event.target.value.toUpperCase())}
-            placeholder={t("code_placeholder")}
-            className="w-40 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
-          />
-          <span className={`text-xs ${isValid || userCode.length === 0 ? "text-slate-400" : "text-rose-500"}`}>
-            {isValid || userCode.length === 0 ? t("code_hint") : t("code_invalid")}
-          </span>
+        <div className="flex items-center gap-2">
+          {user ? (
+            <div className="flex items-center gap-3 rounded-full border border-slate-200/70 bg-white/80 px-3 py-1.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
+              <span className="font-semibold">{user.username}</span>
+              <span className="font-mono text-slate-500">{user.user_code}</span>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="rounded-full bg-rose-600 px-3 py-1 text-white"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onLoginClick}
+              className="rounded-full border border-emerald-500 bg-emerald-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white"
+            >
+              Login
+            </button>
+          )}
         </div>
       </div>
     </header>

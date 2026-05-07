@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { WEEK_ID_REGEX } from "@/lib/validation";
-import { Machine } from "@/lib/types";
 import { Prisma } from "@/generated/prisma/client";
 import { getSessionUserFromRequest, recordUserAction, withRateLimit } from "@/lib/auth";
 
-const MACHINE_VALUES: Machine[] = ["washer1", "washer2", "dryer"];
-
-function isMachine(value: string): value is Machine {
-  return MACHINE_VALUES.includes(value as Machine);
-}
+// Machines are dynamic now; validate against DB
 
 export async function GET(request: NextRequest) {
   const weekId = request.nextUrl.searchParams.get("week_id");
@@ -17,12 +12,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "INVALID_WEEK" }, { status: 400 });
   }
 
-  const reservations = await prisma.reservation.findMany({
-    where: { week_id: weekId },
-    orderBy: [{ day: "asc" }, { hour: "asc" }],
-  });
-
-  return NextResponse.json({ reservations });
+  try {
+    const reservations = await prisma.reservation.findMany({
+      where: { week_id: weekId },
+      orderBy: [{ day: "asc" }, { hour: "asc" }],
+    });
+    return NextResponse.json({ reservations });
+  } catch {
+    // Fail-safe: never break the UI if DB read fails
+    return NextResponse.json({ reservations: [] });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -36,12 +35,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
   }
 
-  const machine = String(body.machine ?? "");
+  const machineId = String(body.machine_id ?? "");
   const day = Number(body.day);
   const hour = Number(body.hour);
   const weekId = String(body.week_id ?? "");
 
-  if (!isMachine(machine)) {
+  if (!machineId) {
     return NextResponse.json({ error: "INVALID_MACHINE" }, { status: 400 });
   }
 
@@ -55,6 +54,15 @@ export async function POST(request: NextRequest) {
 
   if (!WEEK_ID_REGEX.test(weekId)) {
     return NextResponse.json({ error: "INVALID_WEEK" }, { status: 400 });
+  }
+
+  // Check machine exists and is enabled
+  const machine = await prisma.machine.findUnique({ where: { id: machineId } });
+  if (!machine) {
+    return NextResponse.json({ error: "INVALID_MACHINE" }, { status: 400 });
+  }
+  if (!machine.enabled) {
+    return NextResponse.json({ error: "MACHINE_DISABLED" }, { status: 409 });
   }
 
   const rate = await withRateLimit(sessionUser.id, "reserve", 6, 60_000);
@@ -74,7 +82,7 @@ export async function POST(request: NextRequest) {
 
       const reservation = await tx.reservation.create({
         data: {
-          machine,
+          machine_id: machineId,
           day,
           hour,
           user_code: sessionUser.user_code,

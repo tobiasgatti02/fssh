@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/Modal";
 import { useLanguage } from "@/components/LanguageProvider";
 import { hourLabel, DAY_KEYS } from "@/lib/time";
-import { Machine, Reservation } from "@/lib/types";
-import { normalizeUserCode, RESERVATION_CODE_REGEX } from "@/lib/validation";
+import { Reservation } from "@/lib/types";
 
 export type Slot = {
-  machine: Machine;
+  machineId: string;
+  machineLabel: string;
   day: number;
   hour: number;
 };
@@ -16,18 +15,16 @@ export type Slot = {
 type ReservationModalProps = {
   open: boolean;
   slot: Slot | null;
-  userCode: string;
   onClose: () => void;
-  onConfirm: (slot: Slot, code: string) => void;
+  onConfirm: (slot: Slot) => void;
   busy?: boolean;
 };
 
 type CancelModalProps = {
   open: boolean;
   reservation: Reservation | null;
-  userCode: string;
   onClose: () => void;
-  onConfirm: (reservation: Reservation, code: string) => void;
+  onConfirm: (reservation: Reservation) => void;
   busy?: boolean;
 };
 
@@ -45,9 +42,7 @@ function SlotSummary({ slot }: { slot: Slot }) {
           {hourLabel(slot.hour)}
         </span>
       </div>
-      <div className="mt-1 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        {t(`machine_${slot.machine}` as const)}
-      </div>
+      <div className="mt-1 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{slot.machineLabel}</div>
     </div>
   );
 }
@@ -55,22 +50,11 @@ function SlotSummary({ slot }: { slot: Slot }) {
 export function ReservationModal({
   open,
   slot,
-  userCode,
   onClose,
   onConfirm,
   busy,
 }: ReservationModalProps) {
   const { t } = useLanguage();
-  const [code, setCode] = useState(userCode);
-
-  useEffect(() => {
-    if (open) {
-      setCode(userCode);
-    }
-  }, [open, userCode]);
-
-  const normalized = useMemo(() => normalizeUserCode(code), [code]);
-  const isValid = RESERVATION_CODE_REGEX.test(normalized);
 
   if (!slot) {
     return null;
@@ -93,8 +77,8 @@ export function ReservationModal({
           </button>
           <button
             type="button"
-            disabled={!isValid || !!busy}
-            onClick={() => onConfirm(slot, normalized)}
+            disabled={!!busy}
+            onClick={() => onConfirm(slot)}
             className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-emerald-400/60"
           >
             {t("reserve")}
@@ -103,23 +87,7 @@ export function ReservationModal({
       }
     >
       <SlotSummary slot={slot} />
-      <div className="space-y-2">
-        <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          {t("my_code")}
-        </label>
-        <input
-          value={code}
-          onChange={(event) => setCode(event.target.value.toUpperCase())}
-          placeholder={t("code_placeholder")}
-          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
-        />
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-          <span>{t("code_hint")}</span>
-          {!isValid && code.length > 0 ? (
-            <span className="text-rose-500">{t("code_invalid")}</span>
-          ) : null}
-        </div>
-      </div>
+      <p className="text-sm text-slate-600 dark:text-slate-300">{t("reservation_auth_notice")}</p>
     </Modal>
   );
 }
@@ -127,22 +95,11 @@ export function ReservationModal({
 export function CancelModal({
   open,
   reservation,
-  userCode,
   onClose,
   onConfirm,
   busy,
 }: CancelModalProps) {
   const { t } = useLanguage();
-  const [code, setCode] = useState(userCode);
-
-  useEffect(() => {
-    if (open) {
-      setCode(userCode);
-    }
-  }, [open, userCode]);
-
-  const normalized = useMemo(() => normalizeUserCode(code), [code]);
-  const isValid = RESERVATION_CODE_REGEX.test(normalized);
 
   if (!reservation) {
     return null;
@@ -165,8 +122,8 @@ export function CancelModal({
           </button>
           <button
             type="button"
-            disabled={!isValid || !!busy}
-            onClick={() => onConfirm(reservation, normalized)}
+            disabled={!!busy}
+            onClick={() => onConfirm(reservation)}
             className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:bg-rose-400/60"
           >
             {t("confirm_cancel")}
@@ -174,26 +131,8 @@ export function CancelModal({
         </>
       }
     >
-      <SlotSummary
-        slot={{ machine: reservation.machine, day: reservation.day, hour: reservation.hour }}
-      />
-      <div className="space-y-2">
-        <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          {t("enter_code_to_cancel")}
-        </label>
-        <input
-          value={code}
-          onChange={(event) => setCode(event.target.value.toUpperCase())}
-          placeholder={t("code_placeholder")}
-          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-rose-400 focus:ring-2 focus:ring-rose-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-rose-400 dark:focus:ring-rose-400/30"
-        />
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-          <span>{t("code_hint")}</span>
-          {!isValid && code.length > 0 ? (
-            <span className="text-rose-500">{t("code_invalid")}</span>
-          ) : null}
-        </div>
-      </div>
+      <SlotSummary slot={{ machineId: reservation.machine_id, machineLabel: "", day: reservation.day, hour: reservation.hour }} />
+      <p className="text-sm text-slate-600 dark:text-slate-300">{t("cancellation_auth_notice")}</p>
     </Modal>
   );
 }

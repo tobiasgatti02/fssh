@@ -47,3 +47,6 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Admin UX tweaks */
+.admin button { cursor: pointer; }

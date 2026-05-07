@@ -14,25 +14,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Machine {
-  washer1
-  washer2
-  dryer
+model Machine {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  label        String
+  enabled      Boolean       @default(true)
+  created_at   DateTime      @default(now())
+  reservations Reservation[]
 }
 
 model Reservation {
-  id         String   @id @default(uuid())
-  machine    Machine
-  day        Int
-  hour       Int
-  user_code  String
-  user_id    String
-  week_id    String
-  created_at DateTime @default(now())
+  id          String   @id @default(uuid())
+  machine_id  String
+  day         Int
+  hour        Int
+  user_code   String
+  user_id     String
+  week_id     String
+  created_at  DateTime @default(now())
 
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  machine Machine @relation(fields: [machine_id], references: [id], onDelete: Restrict)
 
-  @@unique([machine, day, hour, week_id])
+  @@unique([machine_id, day, hour, week_id])
   @@index([user_code, week_id])
   @@index([user_id, week_id])
 }
@@ -76,3 +80,4 @@ model UserAction {
 
   @@index([user_id, created_at])
 }
+
