@@ -1,4 +1,6 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { Pool } from "@neondatabase/serverless";
 
 function maskDbUrl(raw?: string) {
   if (!raw) return { present: false };
@@ -28,22 +30,24 @@ function maskDbUrl(raw?: string) {
 
 const globalForPrisma = globalThis as { prisma?: PrismaClient };
 
-const dbInfo = maskDbUrl(process.env.DATABASE_URL);
-if (process.env.NODE_ENV !== "production") {
-  // eslint-disable-next-line no-console
-  console.log("[DB] Prisma init", dbInfo);
+function createPrismaClient() {
+  const dbInfo = maskDbUrl(process.env.DATABASE_URL);
+  if (process.env.NODE_ENV !== "production") {
+    // eslint-disable-next-line no-console
+    console.log("[DB] Prisma init", dbInfo);
+  }
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is not defined");
+  }
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaNeon(pool);
+  return new PrismaClient({
+    log: process.env.NODE_ENV === "production" ? ["warn", "error"] : ["query", "warn", "error"],
+    adapter,
+  });
 }
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "production" ? ["warn", "error"] : ["warn", "error", "info"],
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
-  });
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
