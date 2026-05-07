@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Power, PowerOff, Trash2 } from "lucide-react";
 import Modal from "@/components/Modal";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useTheme } from "@/components/ThemeProvider";
 
 type User = {
   id: string;
@@ -27,6 +28,7 @@ type MachineCfg = {
 
 export default function AdminPage() {
   const { t } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
   const [machines, setMachines] = useState<MachineCfg[]>([]);
   const [reservations, setReservations] = useState<any[]>([]);
@@ -233,10 +235,17 @@ export default function AdminPage() {
   const [newMachineLabel, setNewMachineLabel] = useState("");
 
   return (
-    <div className="admin mx-auto flex max-w-6xl flex-col gap-8 p-6">
+    <div className="admin mx-auto flex max-w-6xl flex-col gap-8 p-6 text-slate-800 dark:text-slate-200">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{t("admin")}</h1>
         <div className="flex items-center gap-2">
+          <button
+            className="cursor-pointer rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-200"
+            onClick={toggleTheme}
+            title="Toggle theme"
+          >
+            {theme === "dark" ? "Dark" : "Light"}
+          </button>
           {authHeader ? (
             <button
               className="cursor-pointer rounded-full border px-3 py-1 text-sm"
@@ -254,16 +263,16 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
         <h2 className="mb-3 text-lg font-semibold">{t("machines")}</h2>
         <div className="mb-4 flex flex-wrap gap-2">
-          <input className="rounded-xl border px-3 py-2" placeholder="name (ex: washer3)" value={newMachineName} onChange={e => setNewMachineName(e.target.value)} />
-          <input className="rounded-xl border px-3 py-2" placeholder="label (display)" value={newMachineLabel} onChange={e => setNewMachineLabel(e.target.value)} />
+          <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="name (ex: washer3)" value={newMachineName} onChange={e => setNewMachineName(e.target.value)} />
+          <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="label (display)" value={newMachineLabel} onChange={e => setNewMachineLabel(e.target.value)} />
           <button onClick={createMachine} disabled={busy || !newMachineName.trim() || !newMachineLabel.trim()} className="cursor-pointer rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">{t("add")}</button>
         </div>
         <div className="overflow-auto rounded-xl border">
           <table className="w-full min-w-[440px] text-left text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 dark:bg-slate-800">
               <tr>
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Label</th>
@@ -273,13 +282,13 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {machines.map((m) => (
-                <tr key={m.id} className="border-t">
+                <tr key={m.id} className="border-t border-slate-200 dark:border-slate-700">
                   <td className="px-3 py-2 font-mono">
                     <input
                       value={m.name}
                       onChange={e => updateMachine(m, { name: e.target.value })}
                       disabled={busy}
-                      className="rounded border px-2 py-1 font-mono text-xs w-32"
+                      className="w-32 rounded border border-slate-300 bg-white px-2 py-1 font-mono text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -287,7 +296,7 @@ export default function AdminPage() {
                       value={m.label}
                       onChange={e => updateMachine(m, { label: e.target.value })}
                       disabled={busy}
-                      className="rounded border px-2 py-1 text-xs w-40"
+                      className="w-40 rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -327,12 +336,12 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
         <h2 className="mb-3 text-lg font-semibold">{t("users")}</h2>
         <UserForm authHeader={authHeader} onDone={fetchUsers} busy={busy} setBusy={setBusy} />
         <div className="overflow-auto rounded-xl border">
           <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 dark:bg-slate-800">
               <tr>
                 <th className="px-3 py-2">Matriculation</th>
                 <th className="px-3 py-2">Username</th>
@@ -344,7 +353,7 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} className="border-t">
+                <tr key={u.id} className="border-t border-slate-200 dark:border-slate-700">
                   <td className="px-3 py-2 font-mono">{u.matriculation}</td>
                   <td className="px-3 py-2">{u.username}</td>
                   <td className="px-3 py-2">{u.user_code}</td>
@@ -375,12 +384,12 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
         <h2 className="mb-3 text-lg font-semibold">{t("reservations")}</h2>
         <ReservationForm authHeader={authHeader} onDone={fetchReservations} busy={busy} setBusy={setBusy} users={users} machines={machines} />
         <div className="overflow-auto rounded-xl border">
           <table className="w-full min-w-[720px] text-left text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 dark:bg-slate-800">
               <tr>
                 <th className="px-3 py-2">ID</th>
                 <th className="px-3 py-2">Machine</th>
@@ -394,7 +403,7 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {reservations.map((r) => (
-                <tr key={r.id} className="border-t">
+                <tr key={r.id} className="border-t border-slate-200 dark:border-slate-700">
                   <td className="px-3 py-2 font-mono text-[11px]">{r.id.slice(0, 8)}…</td>
                   <td className="px-3 py-2">{r.machine?.label ?? r.machine?.name ?? r.machine_id}</td>
                   <td className="px-3 py-2">{r.week_id}</td>
@@ -498,13 +507,13 @@ function UserForm({ authHeader, onDone, busy, setBusy }: { authHeader?: string; 
 
   return (
     <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-6">
-      <input className="rounded-xl border px-3 py-2" placeholder={t("matriculation_number")} value={matriculation} onChange={(e) => setMatriculation(e.target.value)} />
-      <input className="rounded-xl border px-3 py-2" placeholder={t("username")} value={username} onChange={(e) => setUsername(e.target.value)} />
-      <select className="rounded-xl border px-3 py-2" value={wing} onChange={(e) => setWing(e.target.value)}>
+      <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder={t("matriculation_number")} value={matriculation} onChange={(e) => setMatriculation(e.target.value)} />
+      <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder={t("username")} value={username} onChange={(e) => setUsername(e.target.value)} />
+      <select className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={wing} onChange={(e) => setWing(e.target.value)}>
         <option value="W">W</option><option value="O">O</option><option value="N">N</option>
       </select>
-      <input className="rounded-xl border px-3 py-2" type="number" min={0} max={8} value={floor} onChange={(e) => setFloor(Number(e.target.value))} />
-      <input className="rounded-xl border px-3 py-2" type="number" min={0} max={99} value={door} onChange={(e) => setDoor(Number(e.target.value))} />
+      <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" type="number" min={0} max={8} value={floor} onChange={(e) => setFloor(Number(e.target.value))} />
+      <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" type="number" min={0} max={99} value={door} onChange={(e) => setDoor(Number(e.target.value))} />
       <button disabled={busy} onClick={createUser} className="rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">{t("create")}</button>
     </div>
   );
@@ -543,15 +552,15 @@ function ReservationForm({ authHeader, onDone, busy, setBusy, users, machines }:
 
   return (
     <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-6">
-      <select className="rounded-xl border px-3 py-2" value={machineId} onChange={(e) => setMachineId(e.target.value)}>
+      <select className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={machineId} onChange={(e) => setMachineId(e.target.value)}>
         {machines.map((m) => (
           <option key={m.id} value={m.id}>{m.label} ({m.name})</option>
         ))}
       </select>
-      <input className="rounded-xl border px-3 py-2" placeholder={t("week")} value={week} onChange={(e) => setWeek(e.target.value)} />
-      <input className="rounded-xl border px-3 py-2" type="number" min={0} max={6} value={day} onChange={(e) => setDay(Number(e.target.value))} />
-      <input className="rounded-xl border px-3 py-2" type="number" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} />
-      <select className="rounded-xl border px-3 py-2" value={userId} onChange={(e) => setUserId(e.target.value)}>
+      <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder={t("week")} value={week} onChange={(e) => setWeek(e.target.value)} />
+      <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" type="number" min={0} max={6} value={day} onChange={(e) => setDay(Number(e.target.value))} />
+      <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" type="number" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} />
+      <select className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={userId} onChange={(e) => setUserId(e.target.value)}>
         {users.map((u) => (
           <option key={u.id} value={u.id}>{u.username} ({u.user_code})</option>
         ))}
