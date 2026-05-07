@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
-import { Pool } from "@neondatabase/serverless";
 
 function maskDbUrl(raw?: string) {
   if (!raw) return { present: false };
@@ -39,8 +38,7 @@ function createPrismaClient() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is not defined");
   }
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const adapter = new PrismaNeon(pool);
+  const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL });
   return new PrismaClient({
     log: process.env.NODE_ENV === "production" ? ["warn", "error"] : ["query", "warn", "error"],
     adapter,
