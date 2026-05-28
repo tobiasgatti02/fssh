@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { pbkdf2Sync, randomBytes, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 export const SESSION_COOKIE = "laundry_session";
@@ -6,13 +7,17 @@ export const SESSION_TTL_DAYS = 14;
 
 export type SessionUser = {
   id: string;
-  matriculation: string;
+  email: string;
   username: string;
   wing: string;
   floor: number;
   door: number;
   user_code: string;
 };
+
+const PASSWORD_ITERATIONS = 150_000;
+const PASSWORD_KEYLEN = 32;
+const PASSWORD_DIGEST = "sha256" as const;
 
 function getSessionExpiry(): Date {
   const expiry = new Date();
@@ -40,13 +45,32 @@ export async function getSessionUserFromRequest(
   const { user } = session;
   return {
     id: user.id,
-    matriculation: user.matriculation,
+    email: user.email,
     username: user.username,
     wing: user.wing,
     floor: user.floor,
     door: user.door,
     user_code: user.user_code,
   };
+}
+
+export function hashPassword(password: string): string {
+  const salt = randomBytes(16);
+  const hash = pbkdf2Sync(password, salt, PASSWORD_ITERATIONS, PASSWORD_KEYLEN, PASSWORD_DIGEST);
+  return ["pbkdf2", PASSWORD_ITERATIONS.toString(), salt.toString("base64"), hash.toString("base64")].join(
+    "$"
+  );
+}
+
+export function verifyPassword(password: string, stored: string): boolean {
+  const parts = stored.split("$");
+  if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
+  const iterations = Number(parts[1]);
+  if (!Number.isFinite(iterations) || iterations <= 0) return false;
+  const salt = Buffer.from(parts[2], "base64");
+  const expected = Buffer.from(parts[3], "base64");
+  const actual = pbkdf2Sync(password, salt, iterations, expected.length, PASSWORD_DIGEST);
+  return timingSafeEqual(expected, actual);
 }
 
 export async function createSessionResponse<T>(userId: string, payload: T) {

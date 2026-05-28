@@ -2,7 +2,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isAdminAuthorized } from "@/lib/auth";
+import { hashPassword, isAdminAuthorized } from "@/lib/auth";
+import { EMAIL_REGEX, USERNAME_REGEX, WING_REGEX, isValidDoor, isValidFloor } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   if (!isAdminAuthorized(request)) {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
       take: pageSize,
       select: {
         id: true,
-        matriculation: true,
+        email: true,
         username: true,
         wing: true,
         floor: true,
@@ -51,29 +52,43 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
 
-  const matriculation = String(body.matriculation ?? "").trim();
+  const email = String(body.email ?? "").trim().toLowerCase();
   const username = String(body.username ?? "").trim();
   const wing = String(body.wing ?? "").trim().toUpperCase();
   const floor = Number(body.floor);
   const door = Number(body.door);
 
-  if (!matriculation || !username || !wing || !Number.isInteger(floor) || !Number.isInteger(door)) {
+  if (!EMAIL_REGEX.test(email)) {
+    return NextResponse.json({ error: "INVALID_EMAIL" }, { status: 400 });
+  }
+
+  if (!USERNAME_REGEX.test(username)) {
+    return NextResponse.json({ error: "INVALID_USERNAME" }, { status: 400 });
+  }
+
+  if (!WING_REGEX.test(wing) || !isValidFloor(floor) || !isValidDoor(door)) {
+    return NextResponse.json({ error: "INVALID_ADDRESS" }, { status: 400 });
+  }
+
+  if (!email || !username || !wing || !Number.isInteger(floor) || !Number.isInteger(door)) {
     return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
   }
 
-  // ensure uniqueness on matriculation and address
+  // ensure uniqueness on email and address
   const existing = await prisma.user.findFirst({
-    where: { OR: [{ matriculation }, { wing, floor, door }] },
+    where: { OR: [{ email }, { wing, floor, door }] },
   });
   if (existing) return NextResponse.json({ error: "CONFLICT" }, { status: 409 });
 
   const userCode = `${wing}${floor}${door.toString().padStart(2, "0")}`;
+  const password = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  const passwordHash = hashPassword(password);
 
   try {
     const user = await prisma.user.create({
-      data: { matriculation, username, wing, floor, door, user_code: userCode },
+      data: { email, password_hash: passwordHash, username, wing, floor, door, user_code: userCode },
     });
-    return NextResponse.json({ user }, { status: 201 });
+    return NextResponse.json({ user, password }, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 });
   }

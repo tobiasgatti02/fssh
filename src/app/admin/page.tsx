@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Power, PowerOff, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Key, Power, PowerOff, Trash2 } from "lucide-react";
 import Modal from "@/components/Modal";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useTheme } from "@/components/ThemeProvider";
 
 type User = {
   id: string;
-  matriculation: string;
+  email: string;
   username: string;
   wing: string;
   floor: number;
@@ -16,6 +16,13 @@ type User = {
   user_code: string;
   created_at: string;
   _count: { reservations: number };
+};
+
+type AccountRequest = {
+  id: string;
+  email: string;
+  status: string;
+  created_at: string;
 };
 
 type MachineCfg = {
@@ -32,9 +39,11 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [machines, setMachines] = useState<MachineCfg[]>([]);
   const [reservations, setReservations] = useState<any[]>([]);
+  const [requests, setRequests] = useState<AccountRequest[]>([]);
   const [usersTotal, setUsersTotal] = useState(0);
   const [machinesTotal, setMachinesTotal] = useState(0);
   const [reservationsTotal, setReservationsTotal] = useState(0);
+  const [requestsTotal, setRequestsTotal] = useState(0);
   const [usersPage, setUsersPage] = useState(1);
   const [machinesPage, setMachinesPage] = useState(1);
   const [reservationsPage, setReservationsPage] = useState(1);
@@ -45,6 +54,11 @@ export default function AdminPage() {
   const [authOpen, setAuthOpen] = useState(true);
   const [adminUser, setAdminUser] = useState("");
   const [adminPass, setAdminPass] = useState("");
+  const [showAdminPass, setShowAdminPass] = useState(false);
+  const [adminNotice, setAdminNotice] = useState<string | null>(null);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [userPasswords, setUserPasswords] = useState<Record<string, string>>({});
+  const [userPasswordVisible, setUserPasswordVisible] = useState<Record<string, boolean>>({});
 
   const authHeader = useMemo(() => {
     if (!adminUser || !adminPass) return undefined;
@@ -82,10 +96,11 @@ export default function AdminPage() {
     }
 
     const qp = (p: number, s: number) => `?page=${p}&pageSize=${s}`;
-    const [u, m, r] = await Promise.all([
+    const [u, m, r, req] = await Promise.all([
       safeJson(`/api/admin/users${qp(usersPage, usersPageSize)}`),
       safeJson(`/api/admin/machines${qp(machinesPage, machinesPageSize)}`),
       safeJson(`/api/admin/reservations${qp(reservationsPage, reservationsPageSize)}`),
+      safeJson(`/api/admin/requests?status=PENDING`),
     ]);
     setUsers(u?.users ?? []);
     setUsersTotal(u?.total ?? (u?.users?.length ?? 0));
@@ -93,6 +108,8 @@ export default function AdminPage() {
     setMachinesTotal(m?.total ?? (m?.machines?.length ?? 0));
     setReservations(r?.reservations ?? []);
     setReservationsTotal(r?.total ?? (r?.reservations?.length ?? 0));
+    setRequests(req?.requests ?? []);
+    setRequestsTotal(req?.total ?? (req?.requests?.length ?? 0));
   }
 
   // Fetchers parciales para evitar flicker y acelerar
@@ -129,10 +146,21 @@ export default function AdminPage() {
     setReservationsTotal(data.total ?? 0);
   }
 
+  async function fetchRequests() {
+    if (!authHeader) return;
+    const headers = { Authorization: authHeader } as const;
+    const url = `/api/admin/requests?status=PENDING`;
+    const res = await fetch(url, { cache: "no-store", headers });
+    if (!res.ok) return;
+    const data = await res.json();
+    setRequests(data.requests ?? []);
+    setRequestsTotal(data.total ?? 0);
+  }
+
   // Cargar datos cuando el header de auth esté listo o cambien las páginas
   useEffect(() => {
     if (authHeader) {
-      void Promise.all([fetchUsers(), fetchMachines(), fetchReservations()]);
+      void Promise.all([fetchUsers(), fetchMachines(), fetchReservations(), fetchRequests()]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authHeader, usersPage, usersPageSize, machinesPage, machinesPageSize, reservationsPage, reservationsPageSize]);
@@ -194,7 +222,7 @@ export default function AdminPage() {
         await fetchMachines();
       } else {
         const err = await res.json().catch(() => ({}));
-        alert(err?.error ?? "Create failed");
+        setAdminNotice(err?.error ?? "Create failed");
       }
     } finally {
       setBusy(false);
@@ -224,6 +252,70 @@ export default function AdminPage() {
         headers: authHeader ? { Authorization: authHeader } : undefined,
       });
       if (res.ok) await fetchReservations();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetUserPassword(id: string) {
+    if (!confirm(t("confirm_reset_password" as any))) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
+        body: JSON.stringify({ action: "reset_password" }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data?.password) {
+          setUserPasswords((prev) => ({ ...prev, [id]: data.password }));
+          setUserPasswordVisible((prev) => ({ ...prev, [id]: true }));
+          setAdminNotice(t("generated_password" as any));
+          setGeneratedPassword(data.password);
+        }
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function approveRequest(
+    requestId: string,
+    payload: { username: string; wing: string; floor: number; door: number }
+  ) {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/requests/${requestId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
+        body: JSON.stringify({ action: "approve", ...payload }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data?.password) {
+          setGeneratedPassword(data.password);
+          setAdminNotice(t("generated_password" as any));
+        }
+        await Promise.all([fetchRequests(), fetchUsers()]);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function declineRequest(requestId: string) {
+    if (!confirm(t("confirm_decline_request" as any))) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/requests/${requestId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
+        body: JSON.stringify({ action: "decline" }),
+      });
+      if (res.ok) {
+        await fetchRequests();
+      }
     } finally {
       setBusy(false);
     }
@@ -262,6 +354,29 @@ export default function AdminPage() {
           ) : null}
         </div>
       </div>
+
+      {(adminNotice || generatedPassword) ? (
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-900/20 dark:text-emerald-100">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              {adminNotice ? <div className="font-semibold">{adminNotice}</div> : null}
+              {generatedPassword ? (
+                <div className="font-mono text-base">{generatedPassword}</div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className="rounded-full border border-emerald-300 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800 transition hover:border-emerald-400 hover:text-emerald-900 dark:border-emerald-700 dark:text-emerald-100 dark:hover:border-emerald-500"
+              onClick={() => {
+                setAdminNotice(null);
+                setGeneratedPassword(null);
+              }}
+            >
+              {t("dismiss" as any)}
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
         <h2 className="mb-3 text-lg font-semibold">{t("machines")}</h2>
@@ -337,15 +452,64 @@ export default function AdminPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+        <h2 className="mb-3 text-lg font-semibold">{t("account_requests" as any)}</h2>
+        {requests.length === 0 ? (
+          <div className="rounded-xl border border-dashed px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-300">
+            {t("no_pending_requests" as any)}
+          </div>
+        ) : (
+          <div className="overflow-auto rounded-xl border">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-800">
+                <tr>
+                  <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">Requested</th>
+                  <th className="px-3 py-2">Username</th>
+                  <th className="px-3 py-2">Wing</th>
+                  <th className="px-3 py-2">Floor</th>
+                  <th className="px-3 py-2">Door</th>
+                  <th className="px-3 py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((req) => (
+                  <RequestRow
+                    key={req.id}
+                    request={req}
+                    busy={busy}
+                    onApprove={approveRequest}
+                    onDecline={declineRequest}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="mt-3 text-xs text-slate-600">
+          {requestsTotal} {t("total" as any)}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
         <h2 className="mb-3 text-lg font-semibold">{t("users")}</h2>
-        <UserForm authHeader={authHeader} onDone={fetchUsers} busy={busy} setBusy={setBusy} />
+        <UserForm
+          authHeader={authHeader}
+          onDone={fetchUsers}
+          busy={busy}
+          setBusy={setBusy}
+          onPasswordGenerated={(password) => {
+            setGeneratedPassword(password);
+            setAdminNotice(t("generated_password" as any));
+          }}
+        />
         <div className="overflow-auto rounded-xl border">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800">
               <tr>
-                <th className="px-3 py-2">Matriculation</th>
+                <th className="px-3 py-2">Email</th>
                 <th className="px-3 py-2">Username</th>
                 <th className="px-3 py-2">Code</th>
+                <th className="px-3 py-2">{t("password" as any)}</th>
                 <th className="px-3 py-2">Created</th>
                 <th className="px-3 py-2">Reservations</th>
                 <th className="px-3 py-2"></th>
@@ -354,9 +518,43 @@ export default function AdminPage() {
             <tbody>
               {users.map((u) => (
                 <tr key={u.id} className="border-t border-slate-200 dark:border-slate-700">
-                  <td className="px-3 py-2 font-mono">{u.matriculation}</td>
+                  <td className="px-3 py-2 font-mono">{u.email}</td>
                   <td className="px-3 py-2">{u.username}</td>
                   <td className="px-3 py-2">{u.user_code}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs">
+                        {userPasswords[u.id]
+                          ? userPasswordVisible[u.id]
+                            ? userPasswords[u.id]
+                            : "••••••••"
+                          : t("no_password" as any)}
+                      </span>
+                      {userPasswords[u.id] ? (
+                        <button
+                          type="button"
+                          className="rounded-full border border-slate-200 px-2 py-1 text-xs text-slate-600 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
+                          onClick={() =>
+                            setUserPasswordVisible((prev) => ({
+                              ...prev,
+                              [u.id]: !prev[u.id],
+                            }))
+                          }
+                        >
+                          {userPasswordVisible[u.id] ? <EyeOff size={12} /> : <Eye size={12} />}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="rounded-full border border-slate-200 px-2 py-1 text-xs text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-200"
+                        onClick={() => resetUserPassword(u.id)}
+                        disabled={busy}
+                        title={t("reset_password" as any)}
+                      >
+                        <Key size={12} />
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-xs">{new Date(u.created_at).toLocaleString()}</td>
                   <td className="px-3 py-2">{u._count.reservations}</td>
                   <td className="px-3 py-2 text-right">
@@ -471,10 +669,17 @@ export default function AdminPage() {
           <input
             className="w-full rounded-xl border px-3 py-2"
             placeholder="Password"
-            type="password"
+            type={showAdminPass ? "text" : "password"}
             value={adminPass}
             onChange={(e) => setAdminPass(e.target.value)}
           />
+          <button
+            type="button"
+            className="self-start rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
+            onClick={() => setShowAdminPass((value) => !value)}
+          >
+            {showAdminPass ? t("hide_password") : t("show_password")}
+          </button>
           <p className="text-xs text-slate-500">{t("admin_login_note")}</p>
         </div>
       </Modal>
@@ -482,9 +687,21 @@ export default function AdminPage() {
   );
 }
 
-function UserForm({ authHeader, onDone, busy, setBusy }: { authHeader?: string; onDone: () => Promise<void>; busy: boolean; setBusy: (b: boolean) => void; }) {
+function UserForm({
+  authHeader,
+  onDone,
+  busy,
+  setBusy,
+  onPasswordGenerated,
+}: {
+  authHeader?: string;
+  onDone: () => Promise<void>;
+  busy: boolean;
+  setBusy: (b: boolean) => void;
+  onPasswordGenerated: (password: string) => void;
+}) {
   const { t } = useLanguage();
-  const [matriculation, setMatriculation] = useState("");
+  const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [wing, setWing] = useState("W");
   const [floor, setFloor] = useState(0);
@@ -493,12 +710,18 @@ function UserForm({ authHeader, onDone, busy, setBusy }: { authHeader?: string; 
   async function createUser() {
     setBusy(true);
     try {
-      await fetch("/api/admin/users", {
+      const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
-        body: JSON.stringify({ matriculation, username, wing, floor, door }),
+        body: JSON.stringify({ email, username, wing, floor, door }),
       });
-      setMatriculation(""); setUsername(""); setWing("W"); setFloor(0); setDoor(0);
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data?.password) {
+          onPasswordGenerated(data.password);
+        }
+      }
+      setEmail(""); setUsername(""); setWing("W"); setFloor(0); setDoor(0);
       await onDone();
     } finally {
       setBusy(false);
@@ -507,7 +730,7 @@ function UserForm({ authHeader, onDone, busy, setBusy }: { authHeader?: string; 
 
   return (
     <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-6">
-      <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder={t("matriculation_number")} value={matriculation} onChange={(e) => setMatriculation(e.target.value)} />
+      <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder={t("email")} value={email} onChange={(e) => setEmail(e.target.value)} />
       <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder={t("username")} value={username} onChange={(e) => setUsername(e.target.value)} />
       <select className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={wing} onChange={(e) => setWing(e.target.value)}>
         <option value="W">W</option><option value="O">O</option><option value="N">N</option>
@@ -516,6 +739,88 @@ function UserForm({ authHeader, onDone, busy, setBusy }: { authHeader?: string; 
       <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" type="number" min={0} max={99} value={door} onChange={(e) => setDoor(Number(e.target.value))} />
       <button disabled={busy} onClick={createUser} className="rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">{t("create")}</button>
     </div>
+  );
+}
+
+function RequestRow({
+  request,
+  busy,
+  onApprove,
+  onDecline,
+}: {
+  request: AccountRequest;
+  busy: boolean;
+  onApprove: (id: string, payload: { username: string; wing: string; floor: number; door: number }) => void;
+  onDecline: (id: string) => void;
+}) {
+  const { t } = useLanguage();
+  const [username, setUsername] = useState("");
+  const [wing, setWing] = useState("W");
+  const [floor, setFloor] = useState(0);
+  const [door, setDoor] = useState(0);
+
+  return (
+    <tr className="border-t border-slate-200 dark:border-slate-700">
+      <td className="px-3 py-2 font-mono text-xs">{request.email}</td>
+      <td className="px-3 py-2 text-xs">{new Date(request.created_at).toLocaleString()}</td>
+      <td className="px-3 py-2">
+        <input
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-40 rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          placeholder={t("username")}
+        />
+      </td>
+      <td className="px-3 py-2">
+        <select
+          className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          value={wing}
+          onChange={(e) => setWing(e.target.value)}
+        >
+          <option value="W">W</option>
+          <option value="O">O</option>
+          <option value="N">N</option>
+        </select>
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="number"
+          min={0}
+          max={8}
+          value={floor}
+          onChange={(e) => setFloor(Number(e.target.value))}
+          className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        />
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="number"
+          min={0}
+          max={99}
+          value={door}
+          onChange={(e) => setDoor(Number(e.target.value))}
+          className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        />
+      </td>
+      <td className="px-3 py-2 text-right">
+        <div className="flex justify-end gap-2">
+          <button
+            disabled={busy}
+            onClick={() => onApprove(request.id, { username, wing, floor, door })}
+            className="cursor-pointer rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white"
+          >
+            {t("approve" as any)}
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => onDecline(request.id)}
+            className="cursor-pointer rounded-full bg-rose-600 px-3 py-1 text-xs font-semibold text-white"
+          >
+            {t("decline" as any)}
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
 

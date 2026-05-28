@@ -1,47 +1,34 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Modal from "@/components/Modal";
 import { useLanguage } from "@/components/LanguageProvider";
-import { buildUserCode } from "@/lib/validation";
 
-type RegisterPayload = {
-  matriculation: string;
-  username: string;
-  wing: string;
-  floor: number;
-  door: number;
+type RequestPayload = {
+  email: string;
 };
 
 type AuthModalProps = {
   open: boolean;
   busy: boolean;
   onClose: () => void;
-  onLogin: (matriculation: string) => void;
-  onRegister: (payload: RegisterPayload) => void;
+  onLogin: (email: string, password: string) => void;
+  onRegister: (payload: RequestPayload) => void;
 };
 
 export default function AuthModal({ open, busy, onClose, onLogin, onRegister }: AuthModalProps) {
   const { t } = useLanguage();
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [matriculation, setMatriculation] = useState("");
-  const [username, setUsername] = useState("");
-  const [wing, setWing] = useState("W");
-  const [floor, setFloor] = useState("0");
-  const [door, setDoor] = useState("00");
+  const [mode, setMode] = useState<"login" | "request">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  const previewCode = useMemo(() => {
-    const floorNumber = Number(floor);
-    const doorNumber = Number(door);
-    return buildUserCode(wing, Number.isNaN(floorNumber) ? 0 : floorNumber, Number.isNaN(doorNumber) ? 0 : doorNumber);
-  }, [door, floor, wing]);
-
-  const submitDisabled = busy || matriculation.trim().length === 0;
+  const submitDisabled = busy || email.trim().length === 0 || (mode === "login" && password.length === 0);
 
   return (
     <Modal
       open={open}
-      title={mode === "login" ? t("login") : t("register")}
+      title={mode === "login" ? t("login") : t("request_access")}
       closeLabel={t("close")}
       onClose={onClose}
       actions={
@@ -58,20 +45,14 @@ export default function AuthModal({ open, busy, onClose, onLogin, onRegister }: 
             disabled={submitDisabled}
             onClick={() => {
               if (mode === "login") {
-                onLogin(matriculation.trim());
+                onLogin(email.trim(), password);
               } else {
-                onRegister({
-                  matriculation: matriculation.trim(),
-                  username: username.trim(),
-                  wing,
-                  floor: Number(floor),
-                  door: Number(door),
-                });
+                onRegister({ email: email.trim() });
               }
             }}
             className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-emerald-400/60"
           >
-            {mode === "login" ? t("sign_in") : t("create_account")}
+            {mode === "login" ? t("sign_in") : t("send_request")}
           </button>
         </>
       }
@@ -90,94 +71,55 @@ export default function AuthModal({ open, busy, onClose, onLogin, onRegister }: 
         </button>
         <button
           type="button"
-          onClick={() => setMode("register")}
+          onClick={() => setMode("request")}
           className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
-            mode === "register"
+            mode === "request"
               ? "bg-emerald-600 text-white"
               : "border border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300"
           }`}
         >
-          {t("register")}
+          {t("request_access")}
         </button>
       </div>
 
       <div className="grid gap-3">
         <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-          {t("matriculation_number")}
+          {t("email")}
         </label>
         <input
-          value={matriculation}
-          onChange={(event) => setMatriculation(event.target.value)}
-          placeholder={t("matriculation_placeholder")}
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder={t("email_placeholder")}
           className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
         />
       </div>
 
-      {mode === "register" ? (
+      {mode === "login" ? (
         <div className="grid gap-3">
           <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {t("username")}
+            {t("password")}
           </label>
-          <input
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            placeholder={t("username_placeholder")}
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
-          />
-
-          <div className="grid grid-cols-3 gap-3">
-            <div className="grid gap-2">
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("wing")}
-              </label>
-              <select
-                value={wing}
-                onChange={(event) => setWing(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
-              >
-                <option value="W">W</option>
-                <option value="O">O</option>
-                <option value="N">N</option>
-              </select>
-            </div>
-            <div className="grid gap-2">
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("floor")}
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={8}
-                value={floor}
-                onChange={(event) => setFloor(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
-              />
-            </div>
-            <div className="grid gap-2">
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {t("door")}
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={99}
-                value={door}
-                onChange={(event) => setDoor(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
-              />
-            </div>
+          <div className="flex items-center gap-2">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder={t("password_placeholder")}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
+            >
+              {showPassword ? t("hide_password") : t("show_password")}
+            </button>
           </div>
-
-          <div className="rounded-2xl border border-slate-200/70 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
-            <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              {t("assigned_code")}
-            </div>
-            <div className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-200">
-              {previewCode}
-            </div>
-          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t("password_login_hint")}</p>
         </div>
-      ) : null}
+      ) : (
+        <p className="text-xs text-slate-500 dark:text-slate-400">{t("request_access_hint")}</p>
+      )}
     </Modal>
   );
 }

@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isAdminAuthorized } from "@/lib/auth";
+import { hashPassword, isAdminAuthorized } from "@/lib/auth";
 
 export async function DELETE(
   request: NextRequest,
@@ -40,6 +40,17 @@ export async function PUT(
   const { id } = await params;
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
+
+  if (body.action === "reset_password") {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    }
+    const password = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+    const passwordHash = hashPassword(password);
+    await prisma.user.update({ where: { id }, data: { password_hash: passwordHash } });
+    return NextResponse.json({ ok: true, password });
+  }
 
   const username = body.username !== undefined ? String(body.username).trim() : undefined;
   const wing = body.wing !== undefined ? String(body.wing).trim().toUpperCase() : undefined;

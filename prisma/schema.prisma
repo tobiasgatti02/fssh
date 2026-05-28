@@ -43,7 +43,8 @@ model Reservation {
 
 model User {
   id            String        @id @default(uuid())
-  matriculation String        @unique
+  email         String        @unique
+  password_hash String
   username      String
   wing          String
   floor         Int
@@ -55,6 +56,15 @@ model User {
   actions       UserAction[]
 
   @@index([wing, floor, door])
+}
+
+model AccountRequest {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  status     String   @default("PENDING")
+  created_at DateTime @default(now())
+  decided_at DateTime?
+  decided_by String?
 }
 
 model Session {

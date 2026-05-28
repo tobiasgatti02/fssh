@@ -18,10 +18,19 @@ export type Reservation = {
 
 export type UserProfile = {
   id: string;
-  matriculation: string;
+  email: string;
   username: string;
   wing: string;
   floor: number;
   door: number;
   user_code: string;
+};
+
+export type AccountRequest = {
+  id: string;
+  email: string;
+  status: string;
+  created_at: string;
+  decided_at?: string | null;
+  decided_by?: string | null;
 };

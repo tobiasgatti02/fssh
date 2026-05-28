@@ -2,8 +2,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { MATRICULATION_REGEX } from "@/lib/validation";
-import { createSessionResponse } from "@/lib/auth";
+import { EMAIL_REGEX, PASSWORD_MIN_LENGTH } from "@/lib/validation";
+import { createSessionResponse, verifyPassword } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -11,20 +11,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
   }
 
-  const matriculation = String(body.matriculation ?? "").trim();
-  if (!MATRICULATION_REGEX.test(matriculation)) {
-    return NextResponse.json({ error: "INVALID_MATRICULATION" }, { status: 400 });
+  const email = String(body.email ?? "").trim().toLowerCase();
+  const password = String(body.password ?? "");
+
+  if (!EMAIL_REGEX.test(email)) {
+    return NextResponse.json({ error: "INVALID_EMAIL" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { matriculation } });
-  if (!user) {
-    return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return NextResponse.json({ error: "INVALID_PASSWORD" }, { status: 400 });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !verifyPassword(password, user.password_hash)) {
+    return NextResponse.json({ error: "INVALID_CREDENTIALS" }, { status: 401 });
   }
 
   return createSessionResponse(user.id, {
     user: {
       id: user.id,
-      matriculation: user.matriculation,
+      email: user.email,
       username: user.username,
       wing: user.wing,
       floor: user.floor,

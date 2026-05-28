@@ -1,6 +1,7 @@
 export const RESERVATION_CODE_REGEX = /^(W|O|N)\d{3}$/;
 export const WEEK_ID_REGEX = /^\d{4}-W\d{2}$/;
-export const MATRICULATION_REGEX = /^\d{5,10}$/;
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const PASSWORD_MIN_LENGTH = 8;
 export const USERNAME_REGEX = /^[A-Za-z0-9 ._\-]{2,24}$/;
 export const WING_REGEX = /^(W|O|N)$/;
 

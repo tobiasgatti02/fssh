@@ -121,13 +121,13 @@ export default function AppShell() {
     }
   }, [machines, activeMachineId]);
 
-  const handleLogin = async (matriculation: string) => {
+  const handleLogin = async (email: string, password: string) => {
     setAuthBusy(true);
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matriculation }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (!response.ok) {
@@ -144,13 +144,7 @@ export default function AppShell() {
     }
   };
 
-  const handleRegister = async (payload: {
-    matriculation: string;
-    username: string;
-    wing: string;
-    floor: number;
-    door: number;
-  }) => {
+  const handleRegister = async (payload: { email: string }) => {
     setAuthBusy(true);
     try {
       const response = await fetch("/api/auth/register", {
@@ -164,10 +158,8 @@ export default function AppShell() {
         return;
       }
 
-      const data = (await response.json()) as { user: UserProfile };
-      setUser(data.user);
       setAuthModalOpen(false);
-      addToast({ type: "success", message: t("register_success") });
+      addToast({ type: "success", message: t("request_sent") });
     } finally {
       setAuthBusy(false);
     }
