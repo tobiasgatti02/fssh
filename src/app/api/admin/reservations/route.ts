@@ -6,10 +6,7 @@ import { isAdminAuthorized } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   if (!isAdminAuthorized(request)) {
-    return new NextResponse("Unauthorized", {
-      status: 401,
-      headers: { "WWW-Authenticate": "Basic realm=admin" },
-    });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
   const url = new URL(request.url);
@@ -32,10 +29,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!isAdminAuthorized(request)) {
-    return new NextResponse("Unauthorized", {
-      status: 401,
-      headers: { "WWW-Authenticate": "Basic realm=admin" },
-    });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
   const body = await request.json().catch(() => null);

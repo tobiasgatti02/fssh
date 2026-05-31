@@ -8,10 +8,7 @@ const VALID_STATUSES = new Set(["PENDING", "APPROVED", "DECLINED"]);
 
 export async function GET(request: NextRequest) {
   if (!isAdminAuthorized(request)) {
-    return new NextResponse("Unauthorized", {
-      status: 401,
-      headers: { "WWW-Authenticate": "Basic realm=admin" },
-    });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
   const url = new URL(request.url);

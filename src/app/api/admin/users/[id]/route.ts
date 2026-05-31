@@ -9,10 +9,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!isAdminAuthorized(request)) {
-    return new NextResponse("Unauthorized", {
-      status: 401,
-      headers: { "WWW-Authenticate": "Basic realm=admin" },
-    });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
   const { id } = await params;
@@ -31,10 +28,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!isAdminAuthorized(request)) {
-    return new NextResponse("Unauthorized", {
-      status: 401,
-      headers: { "WWW-Authenticate": "Basic realm=admin" },
-    });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
   const { id } = await params;

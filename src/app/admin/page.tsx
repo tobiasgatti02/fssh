@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff, Key, Power, PowerOff, Trash2 } from "lucide-react";
 import Modal from "@/components/Modal";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -54,17 +54,12 @@ export default function AdminPage() {
   const [authOpen, setAuthOpen] = useState(true);
   const [adminUser, setAdminUser] = useState("");
   const [adminPass, setAdminPass] = useState("");
+  const [authHeader, setAuthHeader] = useState<string | undefined>(undefined);
   const [showAdminPass, setShowAdminPass] = useState(false);
   const [adminNotice, setAdminNotice] = useState<string | null>(null);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [userPasswords, setUserPasswords] = useState<Record<string, string>>({});
   const [userPasswordVisible, setUserPasswordVisible] = useState<Record<string, boolean>>({});
-
-  const authHeader = useMemo(() => {
-    if (!adminUser || !adminPass) return undefined;
-    const token = btoa(`${adminUser}:${adminPass}`);
-    return `Basic ${token}`;
-  }, [adminUser, adminPass]);
 
   useEffect(() => {
     // Try to prefill from sessionStorage for smoother UX
@@ -73,6 +68,7 @@ export default function AdminPage() {
     if (u && p) {
       setAdminUser(u);
       setAdminPass(p);
+      setAuthHeader(`Basic ${btoa(`${u}:${p}`)}`);
       setAuthOpen(false);
       // Auto-cargar datos al entrar si hay credenciales guardadas
       // La recarga real ocurre en el useEffect de authHeader abajo
@@ -344,6 +340,7 @@ export default function AdminPage() {
               onClick={() => {
                 setAdminUser("");
                 setAdminPass("");
+                setAuthHeader(undefined);
                 sessionStorage.removeItem("admin_u");
                 sessionStorage.removeItem("admin_p");
                 setAuthOpen(true);
@@ -640,7 +637,7 @@ export default function AdminPage() {
         closeLabel={t("close")}
         onClose={() => {
           // Require login before using admin – do not close modal if empty
-          if (adminUser && adminPass) setAuthOpen(false);
+          if (authHeader) setAuthOpen(false);
         }}
         actions={
           <button
@@ -648,10 +645,11 @@ export default function AdminPage() {
             className="cursor-pointer rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
             onClick={async () => {
               if (!adminUser || !adminPass) return;
+              setAuthHeader(`Basic ${btoa(`${adminUser}:${adminPass}`)}`);
               sessionStorage.setItem("admin_u", adminUser);
               sessionStorage.setItem("admin_p", adminPass);
               setAuthOpen(false);
-              await Promise.all([fetchUsers(), fetchMachines(), fetchReservations()]);
+              await Promise.all([fetchUsers(), fetchMachines(), fetchReservations(), fetchRequests()]);
             }}
           >
             {t("login")}
