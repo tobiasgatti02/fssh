@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Key, Power, PowerOff, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Key, Mail, Power, PowerOff, Trash2 } from "lucide-react";
 import Modal from "@/components/Modal";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useTheme } from "@/components/ThemeProvider";
@@ -60,6 +60,11 @@ export default function AdminPage() {
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [userPasswords, setUserPasswords] = useState<Record<string, string>>({});
   const [userPasswordVisible, setUserPasswordVisible] = useState<Record<string, boolean>>({});
+  const [mailOpen, setMailOpen] = useState(false);
+  const [mailTo, setMailTo] = useState("");
+  const [mailSubject, setMailSubject] = useState("");
+  const [mailMessage, setMailMessage] = useState("");
+  const [mailBusy, setMailBusy] = useState(false);
 
   useEffect(() => {
     // Try to prefill from sessionStorage for smoother UX
@@ -273,6 +278,28 @@ export default function AdminPage() {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function sendMail() {
+    if (!authHeader || !mailTo || !mailSubject.trim() || !mailMessage.trim()) return;
+    setMailBusy(true);
+    try {
+      const res = await fetch("/api/admin/mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authHeader },
+        body: JSON.stringify({ to: mailTo, subject: mailSubject.trim(), message: mailMessage.trim() }),
+      });
+      if (res.ok) {
+        setAdminNotice(t("email_sent" as any));
+        setMailOpen(false);
+        setMailSubject("");
+        setMailMessage("");
+      } else {
+        setAdminNotice(t("email_failed" as any));
+      }
+    } finally {
+      setMailBusy(false);
     }
   }
 
@@ -555,13 +582,29 @@ export default function AdminPage() {
                   <td className="px-3 py-2 text-xs">{new Date(u.created_at).toLocaleString()}</td>
                   <td className="px-3 py-2">{u._count.reservations}</td>
                   <td className="px-3 py-2 text-right">
-                    <button
-                      disabled={busy}
-                      onClick={() => deleteUser(u.id)}
-                      className="cursor-pointer inline-flex items-center gap-1 rounded-full bg-rose-600 px-3 py-1 text-sm font-medium text-white"
-                    >
-                      <Trash2 size={16} /> Delete
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          setMailTo(u.email);
+                          setMailSubject("");
+                          setMailMessage("");
+                          setMailOpen(true);
+                        }}
+                        className="cursor-pointer inline-flex items-center gap-1 rounded-full border border-emerald-400 px-3 py-1 text-sm font-medium text-emerald-700 transition hover:border-emerald-500 hover:text-emerald-800 dark:border-emerald-600 dark:text-emerald-200 dark:hover:border-emerald-500"
+                        title={t("message_user" as any)}
+                      >
+                        <Mail size={16} /> {t("message" as any)}
+                      </button>
+                      <button
+                        disabled={busy}
+                        onClick={() => deleteUser(u.id)}
+                        className="cursor-pointer inline-flex items-center gap-1 rounded-full bg-rose-600 px-3 py-1 text-sm font-medium text-white"
+                      >
+                        <Trash2 size={16} /> {t("delete")}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -630,6 +673,66 @@ export default function AdminPage() {
           </div>
         </div>
       </section>
+
+      <Modal
+        open={mailOpen}
+        title={t("send_message" as any)}
+        closeLabel={t("close")}
+        onClose={() => setMailOpen(false)}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setMailOpen(false)}
+              className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
+            >
+              {t("cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={mailBusy || !mailTo || !mailSubject.trim() || !mailMessage.trim()}
+              onClick={sendMail}
+              className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-emerald-400/60"
+            >
+              {mailBusy ? t("loading") : t("send")}
+            </button>
+          </>
+        }
+      >
+        <div className="grid gap-3">
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {t("email")}
+          </label>
+          <input
+            value={mailTo}
+            readOnly
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          />
+        </div>
+        <div className="grid gap-3">
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {t("email_subject" as any)}
+          </label>
+          <input
+            value={mailSubject}
+            onChange={(event) => setMailSubject(event.target.value)}
+            placeholder={t("email_subject_placeholder" as any)}
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
+          />
+        </div>
+        <div className="grid gap-3">
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {t("email_body" as any)}
+          </label>
+          <textarea
+            value={mailMessage}
+            onChange={(event) => setMailMessage(event.target.value)}
+            placeholder={t("email_body_placeholder" as any)}
+            rows={6}
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
+          />
+        </div>
+      </Modal>
 
       <Modal
         open={authOpen}
