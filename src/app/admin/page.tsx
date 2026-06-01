@@ -9,7 +9,6 @@ import { useTheme } from "@/components/ThemeProvider";
 type User = {
   id: string;
   email: string;
-  username: string;
   wing: string;
   floor: number;
   door: number;
@@ -58,6 +57,8 @@ export default function AdminPage() {
   const [showAdminPass, setShowAdminPass] = useState(false);
   const [adminNotice, setAdminNotice] = useState<string | null>(null);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [approvedPassword, setApprovedPassword] = useState<string | null>(null);
+  const [approvedPasswordOpen, setApprovedPasswordOpen] = useState(false);
   const [userPasswords, setUserPasswords] = useState<Record<string, string>>({});
   const [userPasswordVisible, setUserPasswordVisible] = useState<Record<string, boolean>>({});
   const [mailOpen, setMailOpen] = useState(false);
@@ -305,7 +306,7 @@ export default function AdminPage() {
 
   async function approveRequest(
     requestId: string,
-    payload: { username: string; wing: string; floor: number; door: number }
+    payload: { wing: string; floor: number; door: number }
   ) {
     setBusy(true);
     try {
@@ -317,8 +318,8 @@ export default function AdminPage() {
       if (res.ok) {
         const data = await res.json().catch(() => null);
         if (data?.password) {
-          setGeneratedPassword(data.password);
-          setAdminNotice(t("generated_password" as any));
+          setApprovedPassword(data.password);
+          setApprovedPasswordOpen(true);
         }
         await Promise.all([fetchRequests(), fetchUsers()]);
       }
@@ -488,7 +489,6 @@ export default function AdminPage() {
                 <tr>
                   <th className="px-3 py-2">Email</th>
                   <th className="px-3 py-2">Requested</th>
-                  <th className="px-3 py-2">Username</th>
                   <th className="px-3 py-2">Wing</th>
                   <th className="px-3 py-2">Floor</th>
                   <th className="px-3 py-2">Door</th>
@@ -531,7 +531,6 @@ export default function AdminPage() {
             <thead className="bg-slate-50 dark:bg-slate-800">
               <tr>
                 <th className="px-3 py-2">Email</th>
-                <th className="px-3 py-2">Username</th>
                 <th className="px-3 py-2">Code</th>
                 <th className="px-3 py-2">{t("password" as any)}</th>
                 <th className="px-3 py-2">Created</th>
@@ -543,7 +542,6 @@ export default function AdminPage() {
               {users.map((u) => (
                 <tr key={u.id} className="border-t border-slate-200 dark:border-slate-700">
                   <td className="px-3 py-2 font-mono">{u.email}</td>
-                  <td className="px-3 py-2">{u.username}</td>
                   <td className="px-3 py-2">{u.user_code}</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
@@ -735,6 +733,33 @@ export default function AdminPage() {
       </Modal>
 
       <Modal
+        open={approvedPasswordOpen}
+        title={t("generated_password" as any)}
+        closeLabel={t("close")}
+        onClose={() => {
+          setApprovedPasswordOpen(false);
+          setApprovedPassword(null);
+        }}
+        actions={
+          <button
+            type="button"
+            onClick={() => {
+              setApprovedPasswordOpen(false);
+              setApprovedPassword(null);
+            }}
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:text-white"
+          >
+            {t("close")}
+          </button>
+        }
+      >
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-900/20 dark:text-emerald-100">
+          <div className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-200">{t("password" as any)}</div>
+          <div className="mt-1 font-mono text-base">{approvedPassword}</div>
+        </div>
+      </Modal>
+
+      <Modal
         open={authOpen}
         title={t("login")}
         closeLabel={t("close")}
@@ -803,7 +828,6 @@ function UserForm({
 }) {
   const { t } = useLanguage();
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
   const [wing, setWing] = useState("W");
   const [floor, setFloor] = useState(0);
   const [door, setDoor] = useState(0);
@@ -814,7 +838,7 @@ function UserForm({
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(authHeader ? { Authorization: authHeader } : {}) },
-        body: JSON.stringify({ email, username, wing, floor, door }),
+        body: JSON.stringify({ email, wing, floor, door }),
       });
       if (res.ok) {
         const data = await res.json().catch(() => null);
@@ -822,7 +846,7 @@ function UserForm({
           onPasswordGenerated(data.password);
         }
       }
-      setEmail(""); setUsername(""); setWing("W"); setFloor(0); setDoor(0);
+      setEmail(""); setWing("W"); setFloor(0); setDoor(0);
       await onDone();
     } finally {
       setBusy(false);
@@ -832,7 +856,6 @@ function UserForm({
   return (
     <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-6">
       <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder={t("email")} value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder={t("username")} value={username} onChange={(e) => setUsername(e.target.value)} />
       <select className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={wing} onChange={(e) => setWing(e.target.value)}>
         <option value="W">W</option><option value="O">O</option><option value="N">N</option>
       </select>
@@ -851,11 +874,10 @@ function RequestRow({
 }: {
   request: AccountRequest;
   busy: boolean;
-  onApprove: (id: string, payload: { username: string; wing: string; floor: number; door: number }) => void;
+  onApprove: (id: string, payload: { wing: string; floor: number; door: number }) => void;
   onDecline: (id: string) => void;
 }) {
   const { t } = useLanguage();
-  const [username, setUsername] = useState("");
   const [wing, setWing] = useState("W");
   const [floor, setFloor] = useState(0);
   const [door, setDoor] = useState(0);
@@ -864,14 +886,6 @@ function RequestRow({
     <tr className="border-t border-slate-200 dark:border-slate-700">
       <td className="px-3 py-2 font-mono text-xs">{request.email}</td>
       <td className="px-3 py-2 text-xs">{new Date(request.created_at).toLocaleString()}</td>
-      <td className="px-3 py-2">
-        <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="w-40 rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-          placeholder={t("username")}
-        />
-      </td>
       <td className="px-3 py-2">
         <select
           className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
@@ -907,7 +921,7 @@ function RequestRow({
         <div className="flex justify-end gap-2">
           <button
             disabled={busy}
-            onClick={() => onApprove(request.id, { username, wing, floor, door })}
+            onClick={() => onApprove(request.id, { wing, floor, door })}
             className="cursor-pointer rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white"
           >
             {t("approve" as any)}
@@ -968,7 +982,7 @@ function ReservationForm({ authHeader, onDone, busy, setBusy, users, machines }:
       <input className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" type="number" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} />
       <select className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" value={userId} onChange={(e) => setUserId(e.target.value)}>
         {users.map((u) => (
-          <option key={u.id} value={u.id}>{u.username} ({u.user_code})</option>
+          <option key={u.id} value={u.id}>{u.email} ({u.user_code})</option>
         ))}
       </select>
       <button disabled={busy} onClick={createReservation} className="rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">{t("create")}</button>

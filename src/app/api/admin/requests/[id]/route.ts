@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, isAdminAuthorized } from "@/lib/auth";
-import { USERNAME_REGEX, WING_REGEX, isValidDoor, isValidFloor } from "@/lib/validation";
+import { WING_REGEX, isValidDoor, isValidFloor } from "@/lib/validation";
 
 export async function PUT(
   request: NextRequest,
@@ -35,14 +35,9 @@ export async function PUT(
     return NextResponse.json({ error: "INVALID_ACTION" }, { status: 400 });
   }
 
-  const username = String(body.username ?? "").trim();
   const wing = String(body.wing ?? "").trim().toUpperCase();
   const floor = Number(body.floor);
   const door = Number(body.door);
-
-  if (!USERNAME_REGEX.test(username)) {
-    return NextResponse.json({ error: "INVALID_USERNAME" }, { status: 400 });
-  }
 
   if (!WING_REGEX.test(wing) || !isValidFloor(floor) || !isValidDoor(door)) {
     return NextResponse.json({ error: "INVALID_ADDRESS" }, { status: 400 });
@@ -64,6 +59,7 @@ export async function PUT(
   }
 
   const userCode = `${wing}${floor}${door.toString().padStart(2, "0")}`;
+  const username = accountRequest.email;
   const password = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const passwordHash = hashPassword(password);
 

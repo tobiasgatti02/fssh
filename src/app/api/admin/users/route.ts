@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, isAdminAuthorized } from "@/lib/auth";
-import { EMAIL_REGEX, USERNAME_REGEX, WING_REGEX, isValidDoor, isValidFloor } from "@/lib/validation";
+import { EMAIL_REGEX, WING_REGEX, isValidDoor, isValidFloor } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   if (!isAdminAuthorized(request)) {
@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         email: true,
-        username: true,
         wing: true,
         floor: true,
         door: true,
@@ -47,7 +46,6 @@ export async function POST(request: NextRequest) {
   if (!body) return NextResponse.json({ error: "INVALID_BODY" }, { status: 400 });
 
   const email = String(body.email ?? "").trim().toLowerCase();
-  const username = String(body.username ?? "").trim();
   const wing = String(body.wing ?? "").trim().toUpperCase();
   const floor = Number(body.floor);
   const door = Number(body.door);
@@ -56,15 +54,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "INVALID_EMAIL" }, { status: 400 });
   }
 
-  if (!USERNAME_REGEX.test(username)) {
-    return NextResponse.json({ error: "INVALID_USERNAME" }, { status: 400 });
-  }
-
   if (!WING_REGEX.test(wing) || !isValidFloor(floor) || !isValidDoor(door)) {
     return NextResponse.json({ error: "INVALID_ADDRESS" }, { status: 400 });
   }
 
-  if (!email || !username || !wing || !Number.isInteger(floor) || !Number.isInteger(door)) {
+  if (!email || !wing || !Number.isInteger(floor) || !Number.isInteger(door)) {
     return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
   }
 
@@ -75,6 +69,7 @@ export async function POST(request: NextRequest) {
   if (existing) return NextResponse.json({ error: "CONFLICT" }, { status: 409 });
 
   const userCode = `${wing}${floor}${door.toString().padStart(2, "0")}`;
+  const username = email;
   const password = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const passwordHash = hashPassword(password);
 

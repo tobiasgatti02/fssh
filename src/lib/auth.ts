@@ -8,7 +8,6 @@ export const SESSION_TTL_DAYS = 14;
 export type SessionUser = {
   id: string;
   email: string;
-  username: string;
   wing: string;
   floor: number;
   door: number;
@@ -46,7 +45,6 @@ export async function getSessionUserFromRequest(
   return {
     id: user.id,
     email: user.email,
-    username: user.username,
     wing: user.wing,
     floor: user.floor,
     door: user.door,

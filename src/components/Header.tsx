@@ -68,14 +68,14 @@ export default function Header({ weekId, user, onLoginClick, onLogout }: HeaderP
         <div>
           {user ? (
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              {t("hi" as any)}, <span className="font-semibold">{user.username}</span>
+              {t("hi" as any)}, <span className="font-semibold">{user.email}</span>
             </p>
           ) : null}
         </div>
         <div className="flex items-center gap-2">
           {user ? (
             <div className="flex items-center gap-3 rounded-full border border-slate-200/70 bg-white/80 px-3 py-1.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
-              <span className="font-semibold">{user.username}</span>
+              <span className="font-semibold">{user.email}</span>
               <span className="font-mono text-slate-500">{user.user_code}</span>
               <button
                 type="button"

@@ -19,7 +19,6 @@ export type Reservation = {
 export type UserProfile = {
   id: string;
   email: string;
-  username: string;
   wing: string;
   floor: number;
   door: number;

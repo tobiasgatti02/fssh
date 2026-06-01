@@ -46,13 +46,11 @@ export async function PUT(
     return NextResponse.json({ ok: true, password });
   }
 
-  const username = body.username !== undefined ? String(body.username).trim() : undefined;
   const wing = body.wing !== undefined ? String(body.wing).trim().toUpperCase() : undefined;
   const floor = body.floor !== undefined ? Number(body.floor) : undefined;
   const door = body.door !== undefined ? Number(body.door) : undefined;
 
   const data: Record<string, any> = {};
-  if (username !== undefined) data.username = username;
   if (wing !== undefined) data.wing = wing;
   if (floor !== undefined) data.floor = floor;
   if (door !== undefined) data.door = door;
