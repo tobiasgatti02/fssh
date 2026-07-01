@@ -30,15 +30,15 @@ function maskDbUrl(raw?: string) {
 const globalForPrisma = globalThis as { prisma?: PrismaClient };
 
 function createPrismaClient() {
-  const dbInfo = maskDbUrl(process.env.DATABASE_URL);
+  const databaseUrl = process.env.STORAGE_DATABASE_URL;
+  const dbInfo = maskDbUrl(databaseUrl);
   if (process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line no-console
     console.log("[DB] Prisma init", dbInfo);
   }
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is not defined");
+  if (!databaseUrl) {
+    throw new Error("STORAGE_DATABASE_URL is not defined");
   }
-  const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaNeon({ connectionString: databaseUrl });
   return new PrismaClient({
     log: process.env.NODE_ENV === "production" ? ["warn", "error"] : ["query", "warn", "error"],
     adapter,

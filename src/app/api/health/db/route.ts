@@ -3,12 +3,25 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+function getErrorDetails(error: unknown) {
+  if (typeof error !== "object" || error === null) {
+    return { code: "ERROR", message: String(error) };
+  }
+
+  const candidate = error as { code?: unknown; message?: unknown };
+  return {
+    code: typeof candidate.code === "string" ? candidate.code : "ERROR",
+    message: typeof candidate.message === "string" ? candidate.message : "Unknown database error",
+  };
+}
+
 export async function GET() {
   const info = (() => {
+    const databaseUrl = process.env.STORAGE_DATABASE_URL;
     try {
-      const u = new URL(process.env.DATABASE_URL || "");
+      const u = new URL(databaseUrl || "");
       return {
-        present: !!process.env.DATABASE_URL,
+        present: !!databaseUrl,
         host: u.host || undefined,
         database: u.pathname?.replace(/^\//, "") || undefined,
         sslmode: u.searchParams.get("sslmode") || undefined,
@@ -18,7 +31,7 @@ export async function GET() {
         pooler: (u.host || "").includes("pooler"),
       };
     } catch {
-      return { present: !!process.env.DATABASE_URL, invalidUrl: true } as const;
+      return { present: !!databaseUrl, invalidUrl: true } as const;
     }
   })();
 
@@ -28,7 +41,8 @@ export async function GET() {
     console.log("[HEALTH] DB ping ok=", ok, info);
     return NextResponse.json({ ok, info });
   } catch (e) {
-    console.error("[HEALTH] DB ping error", (e as any)?.code, (e as any)?.message);
-    return NextResponse.json({ ok: false, error: (e as any)?.code || "ERROR", info }, { status: 500 });
+    const error = getErrorDetails(e);
+    console.error("[HEALTH] DB ping error", error.code, error.message);
+    return NextResponse.json({ ok: false, error: error.code, info }, { status: 500 });
   }
 }
