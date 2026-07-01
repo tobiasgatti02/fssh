@@ -4,16 +4,16 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
-const databaseUrl =
+const pooledDatabaseUrl =
+  process.env.STORAGE_DATABASE_URL ??
+  process.env.STORAGE_POSTGRES_PRISMA_URL ??
+  process.env.STORAGE_POSTGRES_URL ??
+  "";
+
+const directDatabaseUrl =
   process.env.STORAGE_DATABASE_URL_UNPOOLED ??
   process.env.STORAGE_POSTGRES_URL_NON_POOLING ??
-  process.env.STORAGE_DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error(
-    "STORAGE_DATABASE_URL_UNPOOLED or STORAGE_DATABASE_URL is not defined",
-  );
-}
+  pooledDatabaseUrl;
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -21,6 +21,7 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: databaseUrl,
+    url: pooledDatabaseUrl,
+    directUrl: directDatabaseUrl,
   },
 });
