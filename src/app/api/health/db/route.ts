@@ -18,9 +18,9 @@ function getErrorDetails(error: unknown) {
 export async function GET() {
   const info = (() => {
     const databaseUrl =
-      process.env.STORAGE_DATABASE_URL ??
-      process.env.STORAGE_POSTGRES_PRISMA_URL ??
-      process.env.STORAGE_POSTGRES_URL;
+      process.env.DATABASE_URL ??
+      process.env.POSTGRES_PRISMA_URL ??
+      process.env.POSTGRES_URL;
     try {
       const u = new URL(databaseUrl || "");
       return {

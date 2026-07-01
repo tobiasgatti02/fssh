@@ -31,16 +31,16 @@ const globalForPrisma = globalThis as { prisma?: PrismaClient };
 
 function createPrismaClient() {
   const databaseUrl =
-    process.env.STORAGE_DATABASE_URL ??
-    process.env.STORAGE_POSTGRES_PRISMA_URL ??
-    process.env.STORAGE_POSTGRES_URL;
+    process.env.DATABASE_URL ??
+    process.env.POSTGRES_PRISMA_URL ??
+    process.env.POSTGRES_URL;
   const dbInfo = maskDbUrl(databaseUrl);
   if (process.env.NODE_ENV !== "production") {
     console.log("[DB] Prisma init", dbInfo);
   }
   if (!databaseUrl) {
     throw new Error(
-      "STORAGE_DATABASE_URL, STORAGE_POSTGRES_PRISMA_URL or STORAGE_POSTGRES_URL is not defined",
+      "DATABASE_URL, POSTGRES_PRISMA_URL or POSTGRES_URL is not defined",
     );
   }
   const adapter = new PrismaNeon({ connectionString: databaseUrl });

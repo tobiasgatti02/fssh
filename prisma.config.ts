@@ -5,14 +5,14 @@ import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 const pooledDatabaseUrl =
-  process.env.STORAGE_DATABASE_URL ??
-  process.env.STORAGE_POSTGRES_PRISMA_URL ??
-  process.env.STORAGE_POSTGRES_URL ??
+  process.env.DATABASE_URL ??
+  process.env.POSTGRES_PRISMA_URL ??
+  process.env.POSTGRES_URL ??
   "";
 
 const directDatabaseUrl =
-  process.env.STORAGE_DATABASE_URL_UNPOOLED ??
-  process.env.STORAGE_POSTGRES_URL_NON_POOLING ??
+  process.env.DATABASE_URL_UNPOOLED ??
+  process.env.POSTGRES_URL_NON_POOLING ??
   pooledDatabaseUrl;
 
 export default defineConfig({
